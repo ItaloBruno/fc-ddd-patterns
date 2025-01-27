@@ -1,3 +1,10 @@
+import Customer from "../../customer/entity/customer";
+import CostumerAddressChangedEvent from "../../customer/event/costumer-address-changed.event";
+import CostumerCreatedEvent from "../../customer/event/costumer-created.event";
+import EnviaConsoleLog1Handler from "../../customer/event/handler/envia.console.log1.handler";
+import EnviaConsoleLog2Handler from "../../customer/event/handler/envia.console.log2.handler";
+import SendMessageWhenCostumerAddressIsChanged from "../../customer/event/handler/send-message-when-costumer-address-is-changed.handler";
+import Address from "../../customer/value-object/address";
 import SendEmailWhenProductIsCreatedHandler from "../../product/event/handler/send-email-when-product-is-created.handler";
 import ProductCreatedEvent from "../../product/event/product-created.event";
 import EventDispatcher from "./event-dispatcher";
@@ -78,5 +85,66 @@ describe("Domain events tests", () => {
     eventDispatcher.notify(productCreatedEvent);
 
     expect(spyEventHandler).toHaveBeenCalled();
+  });
+
+  it("should register the CostumerCreatedEvent handlers", () => {
+    const eventDispatcher = new EventDispatcher();
+    const eventHandler1 = new EnviaConsoleLog1Handler();
+    const eventHandler2 = new EnviaConsoleLog2Handler();
+
+    eventDispatcher.register("CostumerCreatedEvent", eventHandler1);
+    eventDispatcher.register("CostumerCreatedEvent", eventHandler2);
+
+    expect(
+      eventDispatcher.getEventHandlers["CostumerCreatedEvent"]
+    ).toBeDefined();
+    expect(eventDispatcher.getEventHandlers["CostumerCreatedEvent"].length).toBe(
+      2
+    );
+    expect(
+      eventDispatcher.getEventHandlers["CostumerCreatedEvent"][0]
+    ).toMatchObject(eventHandler1);
+    expect(
+      eventDispatcher.getEventHandlers["CostumerCreatedEvent"][1]
+    ).toMatchObject(eventHandler2);
+
+    const spy = jest.spyOn(global.console, 'log')
+    const customer = new Customer("1", "Test");
+    const event = new CostumerCreatedEvent(customer);
+    eventDispatcher.notify(event);
+
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy).toHaveBeenCalledWith("Esse é o primeiro console.log do evento: CustomerCreated")
+    expect(spy).toHaveBeenCalledWith("Esse é o segundo console.log do evento: CustomerCreated")
+
+  });
+
+  it("should register the CostumerAddressChangedEvent handler", () => {
+    const eventDispatcher = new EventDispatcher();
+    const eventHandler = new SendMessageWhenCostumerAddressIsChanged();
+
+    eventDispatcher.register("CostumerAddressChangedEvent", eventHandler);
+
+    expect(
+      eventDispatcher.getEventHandlers["CostumerAddressChangedEvent"]
+    ).toBeDefined();
+    expect(eventDispatcher.getEventHandlers["CostumerAddressChangedEvent"].length).toBe(
+      1
+    );
+    expect(
+      eventDispatcher.getEventHandlers["CostumerAddressChangedEvent"][0]
+    ).toMatchObject(eventHandler);
+
+    const spy = jest.spyOn(global.console, 'log')
+    const customer = new Customer("1", "Test");
+    const address = new Address("Street 1", 1, "Zipcode 1", "City 1");
+    customer.changeAddress(address);
+
+    const event = new CostumerAddressChangedEvent(customer);
+    eventDispatcher.notify(event);
+  
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(
+      `Endereço do cliente: ${customer.id}, ${customer.name} alterado para: ${address.toString()}`);
   });
 });
